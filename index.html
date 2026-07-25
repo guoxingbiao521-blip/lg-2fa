@@ -373,9 +373,8 @@
         let timerInterval = null;
         const CIRCUMFERENCE = 2 * Math.PI * 50; 
 
-        // --- 自定义弹窗逻辑 ---
-        let modalCallback = null;
-
+        // --- 修复后的自定义弹窗逻辑 ---
+        
         function showPrompt(title, defaultValue, callback) {
             document.getElementById('modalTitle').innerText = title;
             const inputEl = document.getElementById('modalInput');
@@ -385,11 +384,11 @@
             document.getElementById('customModal').classList.add('active');
             setTimeout(() => inputEl.focus(), 100);
             
-            modalCallback = callback;
+            // 修复：利用闭包直接执行 callback，不再依赖全局变量被清空
             document.getElementById('modalConfirmBtn').onclick = () => {
                 const val = inputEl.value;
                 closeModal();
-                if (modalCallback) modalCallback(val);
+                if (callback) callback(val); 
             };
         }
 
@@ -398,16 +397,15 @@
             document.getElementById('modalInput').style.display = 'none';
             document.getElementById('customModal').classList.add('active');
             
-            modalCallback = callback;
+            // 修复：利用闭包直接执行 callback
             document.getElementById('modalConfirmBtn').onclick = () => {
                 closeModal();
-                if (modalCallback) modalCallback(true);
+                if (callback) callback(true);
             };
         }
 
         function closeModal() {
             document.getElementById('customModal').classList.remove('active');
-            modalCallback = null;
         }
 
         // -------------------------
@@ -550,6 +548,14 @@
             showConfirm("确定要删除这条历史记录吗？", (confirmed) => {
                 if (confirmed) {
                     let history = getHistory();
+                    
+                    // 新增体验优化：如果删除的是当前正在显示的账号，则把屏幕重置为空
+                    let itemToDelete = history.find(h => h.id === id);
+                    if (itemToDelete && itemToDelete.secret === currentSecret) {
+                        currentSecret = "";
+                        updateTOTP(); 
+                    }
+
                     history = history.filter(h => h.id !== id);
                     saveHistory(history);
                     showToast("记录已删除");
