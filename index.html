@@ -122,20 +122,38 @@
         .modal-btn-confirm { background: var(--rose-main); color: white; box-shadow: var(--glow-rose); }
         .modal-btn-confirm:hover { background: var(--rose-dark); }
 
-        /* --- 手机端专属适配 (响应式重构) --- */
+        /* --- 📱 手机端专属适配 (响应式极致居中重构) --- */
         @media (max-width: 768px) {
             .dashboard { grid-template-columns: 1fr; }
             .header-text h1 { font-size: 2.2rem; }
             .header { flex-direction: column; gap: 10px; }
             
-            /* 修复输入框和按钮挤压溢出：改为上下排列 */
-            .input-section { flex-direction: column; align-items: stretch; }
-            .input-section input { width: 100%; text-align: center; } /* 输入内容也居中 */
-            .btn-generate { width: 100%; padding: 16px; } /* 按钮宽度撑满 */
+            /* 所有装饰标签强制绝对居中 */
+            .decor-label { align-self: center !important; text-align: center; }
             
-            /* 修复历史记录显示不协调：整体绝对居中对齐 */
-            .history-item { flex-direction: column; align-items: center; text-align: center; gap: 15px; }
-            .history-actions { width: 100%; justify-content: center; flex-wrap: wrap; }
+            /* 历史记录标题强制居中 */
+            .history-header { text-align: center; border-left: none; padding-left: 0; }
+            
+            /* 输入框和按钮等宽堆叠 */
+            .input-section { flex-direction: column; align-items: stretch; }
+            .input-section input { width: 100%; text-align: center; } 
+            .btn-generate { width: 100%; padding: 16px; } 
+            
+            /* 历史记录项目内部居中 */
+            .history-item { flex-direction: column; align-items: center; text-align: center; gap: 18px; padding: 20px 15px; }
+            
+            /* 🚀 核心修复：四按钮改为 2x2 标准矩阵，绝不乱换行 */
+            .history-actions { 
+                display: grid !important; 
+                grid-template-columns: 1fr 1fr; /* 两行两列 */
+                width: 100%; 
+                gap: 12px; /* 按钮间距 */
+            }
+            .history-actions button { 
+                width: 100%; /* 撑满各自的格子 */
+                padding: 12px 0; /* 增加手机端点击手感 */
+                margin: 0;
+            }
         }
     </style>
 </head>
@@ -144,7 +162,7 @@
     <!-- 全局居中吐司提示 -->
     <div id="toast">提示信息</div>
 
-    <!-- 弹窗组件必须存在于 HTML 中，否则改名和删除会报错 -->
+    <!-- 弹窗组件 -->
     <div class="modal-overlay" id="customModal">
         <div class="modal-box">
             <div class="modal-title" id="modalTitle">提示</div>
@@ -179,7 +197,7 @@
             </div>
 
             <div class="glass-panel timer-container">
-                <div class="decor-label" style="align-self: center; margin-bottom: 15px;">SYNC STATUS // 节点同步</div>
+                <div class="decor-label">SYNC STATUS // 节点同步</div>
                 <div class="micro-data md-top-right">PROTOCOL: TOTP<br>ALG: SHA-1</div>
                 <div class="micro-data md-bottom-left">PERIOD: 30s<br>DIGITS: 6</div>
                 <div class="clock-wrapper">
@@ -208,7 +226,7 @@
         const CIRCUMFERENCE = 2 * Math.PI * 50; 
 
         // -------------------------
-        // 核心修复1：自定义弹窗逻辑
+        // 弹窗逻辑
         // -------------------------
         function showPrompt(title, defaultValue, callback) {
             document.getElementById('modalTitle').innerText = title;
@@ -242,7 +260,7 @@
         }
 
         // -------------------------
-        // 核心修复2：全兼容复制功能
+        // 复制功能
         // -------------------------
         function fallbackCopy(text, successMsg) {
             const textArea = document.createElement("textarea");
