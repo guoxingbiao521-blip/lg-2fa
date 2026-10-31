@@ -184,6 +184,8 @@
             </div>
         </div>
 
+        <button onclick="showClientDownload()" style="width:100%;background:var(--rose-main);color:#fff;border:none;padding:16px;border-radius:8px;font-size:1rem;font-weight:bold;cursor:pointer;box-shadow:var(--glow-rose);">⬇️ 下载客户端</button>
+
         <div class="glass-panel input-section">
             <input type="text" id="secretInput" placeholder="请输入或粘贴您的 2FA 密钥 (Base32)" autocomplete="off">
             <button class="btn-generate" onclick="generateAndSave()">生成验证码</button>
@@ -219,7 +221,6 @@
             <div id="historyList"></div>
         </div>
 
-        <button onclick="showClientDownload()" style="width:100%;background:var(--rose-main);color:#fff;border:none;padding:16px;border-radius:8px;font-size:1rem;font-weight:bold;cursor:pointer;box-shadow:var(--glow-rose);">⬇️ 下载客户端</button>
     </div>
 
     <script>
@@ -466,7 +467,7 @@
         <div style="background: rgba(255,0,85,0.05); border: 1px solid rgba(255,0,85,0.15); border-radius: 14px; padding: 16px; margin-bottom: 12px;">
             <div style="font-weight: bold; font-size: 16px;">📱 安卓手机版 v1.0.5 · 4.2 MB</div>
             <p style="color: #666; font-size: 13px; line-height: 1.6; margin: 8px 0 12px;">APK 安装包，安装时请允许“安装未知应用”。</p>
-            <a href="https://guo.roselg.xyz/downloads/LG-2FA-android-v105.apk" style="display: block; text-align: center; background: linear-gradient(135deg,#ff6699,#ff0055); color: #fff; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: bold;">⬇️ 下载安卓版</a>
+            <a href="https://guo.roselg.xyz/downloads/LG-2FA-android-v105.apk" style="display: block; text-align: center; background: linear-gradient(135deg,#e6004c,#b3003b); color: #fff; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: bold; box-shadow: 0 4px 12px rgba(255,0,85,0.35);">⬇️ 下载安卓版</a>
         </div>
         <button onclick="hideClientDownload()" style="width: 100%; margin-top: 4px; padding: 10px; border-radius: 10px; border: 1px solid #ddd; background: #f0f0f0; color: #666; cursor: pointer; font-weight: bold;">关闭</button>
     </div>
