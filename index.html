@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LG-筑梦电子 2FA 验证中心</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <!-- 引入开源的 OTPAuth 库 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/otpauth/9.2.2/otpauth.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
@@ -232,7 +233,6 @@
         #scanCancel { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); padding: 12px 40px; border: 2px solid var(--rose-main); background: #fff; color: var(--rose-main); border-radius: 30px; font-weight: bold; font-size: 1rem; cursor: pointer; }
         #scanLoading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 1rem; }
         #scanVideo { width: 100%; border-radius: 12px; background: #000; }
-        #exportText { width: 100%; height: 160px; padding: 12px; border: 2px solid rgba(255,0,85,0.3); border-radius: 12px; font-size: 0.8rem; background: rgba(255,255,255,0.9); outline: none; margin-bottom: 12px; word-break: break-all; }
         @media (max-width: 768px) {
             body { padding: 16px; }
             .container { width: 100%; max-width: 100%; }
@@ -862,7 +862,6 @@
         return { app: 'LG筑梦电子2FA', email: syncEmail(), exportedAt: new Date().toISOString(), entries: entries.map(x => ({ label: x.remark, secret: x.secret })) };
     }
     function updateExportOutput() {
-        document.getElementById('exportText').value = JSON.stringify(buildExportData(exportSelected), null, 2);
         const wrap = document.getElementById('exportQRWrap'); if (wrap) wrap.style.display = 'none';
         const count = document.getElementById('exportSelectCount'); if (count) count.innerText = '已选 ' + exportSelected.size + ' / ' + exportSourceEntries().length + ' 条';
         const tog = document.getElementById('exportToggleAll'); if (tog) tog.innerText = (exportSelected.size > 0 && exportSelected.size === exportSourceEntries().length) ? '取消全选' : '全选';
@@ -897,11 +896,11 @@
         renderExportList(); updateExportOutput(); showV5('exportModal');
     }
     function closeExportModal() { hideV5('exportModal'); }
-    function copyExport() { if (exportSelected.size === 0) { showToast('请先勾选至少一条要导出的账号'); return; } copyToClipboard(document.getElementById('exportText').value, '导出内容已复制'); }
+    function copyExport() { if (exportSelected.size === 0) { showToast('请先勾选至少一条要导出的账号'); return; } copyToClipboard(JSON.stringify(buildExportData(exportSelected), null, 2), '导出内容已复制'); }
     function downloadExport() {
         if (exportSelected.size === 0) { showToast('请先勾选至少一条要导出的账号'); return; }
         try {
-            const blob = new Blob([document.getElementById('exportText').value], { type: 'application/json' });
+            const blob = new Blob([JSON.stringify(buildExportData(exportSelected), null, 2)], { type: 'application/json' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
             const d = new Date(); const pad = (n) => String(n).padStart(2, '0');
             a.download = 'lg-2fa-export-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '.json';
@@ -913,11 +912,14 @@
     function closeImportModal() { hideV5('importModal'); }
     function showExportQR() {
         if (exportSelected.size === 0) { showToast('请先勾选至少一条要导出的账号'); return; }
+        if (exportSelected.size > 15) { showToast('勾选条目超过 15 条，二维码装不下，请改用文件导入'); return; }
         if (typeof qrcode === 'undefined') { showToast('二维码组件还没加载好，请稍后再试'); return; }
         const data = JSON.stringify(buildExportData(exportSelected));
         const wrap = document.getElementById('exportQRWrap'); const img = document.getElementById('exportQRImg'); const note = document.getElementById('exportQRNote');
-        if (data.length > 1500 && note) note.innerText = '条目较多，二维码很密（' + data.length + ' 字），扫不出来时请改用文件导入，或只勾选部分条目再生成。二维码包含所选条目的密钥原文，不要截图外发。用另一台设备 / 另一个账号的“导入 - 扫码导入”扫描。';
-        try { const qr = qrcode(0, 'M'); qr.addData(data); qr.make(); img.src = qr.createDataURL(5, 8); wrap.style.display = 'block'; } catch (e) { showToast('条目太多，生成二维码失败，请改用文件导入'); }
+        try {
+            const qr = qrcode(0, 'M'); qr.addData(data); qr.make(); img.src = qr.createDataURL(5, 8); wrap.style.display = 'block';
+            if (note) note.innerText = '二维码包含所选条目的密钥原文，不要截图外发。用另一台设备 / 另一个账号的“导入 - 扫码导入”扫描。';
+        } catch (e) { showToast('生成二维码失败，请改用文件导入'); }
     }
     function parseExportData(text) {
         let obj;
@@ -1157,7 +1159,7 @@
 
     <div class="v5-modal" id="accountMenuModal"><div class="modal-box"><div class="modal-title">账号</div><div class="menu-email" id="accountEmailText"></div><div id="accountList"></div><button class="menu-btn secondary" onclick="closeAccountMenu(); openAddAccount();">添加账号</button><button class="menu-btn" id="accountSyncBtn" onclick="closeAccountMenu(); syncFromServer();">立即同步</button><button class="menu-btn secondary" onclick="closeAccountMenu(); openChangePwModal();">修改密码</button><button class="menu-btn secondary" onclick="closeAccountMenu(); kickOthers();">剔除其他设备</button><button class="menu-btn secondary" onclick="closeAccountMenu(); openExportModal();">导出</button><button class="menu-btn secondary" onclick="closeAccountMenu(); openImportModal();">导入</button><button class="menu-btn danger" onclick="closeAccountMenu(); syncLogout();">退出当前账号</button><button class="menu-btn secondary" onclick="closeAccountMenu();">取消</button></div></div>
     <div class="v5-modal" id="changePwModal"><div class="modal-box"><div class="modal-title">修改密码</div><input type="password" id="oldPw" placeholder="原密码" autocomplete="current-password"><input type="password" id="newPw" placeholder="新密码（至少 8 位）" autocomplete="new-password"><input type="password" id="newPw2" placeholder="确认新密码" autocomplete="new-password"><button class="menu-btn" onclick="changePassword()">确认修改</button><div style="color:#666;font-size:0.85rem;line-height:1.6;text-align:center;">改密码后，其他设备会退出登录，本机保持登录。</div><button class="menu-btn secondary" onclick="closeChangePwModal();">取消</button></div></div>
-    <div class="v5-modal" id="exportModal"><div class="modal-box"><div class="modal-title">导出</div><div style="color:#ff3333;font-size:0.9rem;line-height:1.6;margin-bottom:12px;text-align:center;">导出内容包含密钥原文，请妥善保管，不要发给任何人。</div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><span id="exportSelectCount" style="color:#666;font-size:0.9rem;"></span><button class="menu-btn secondary" id="exportToggleAll" style="width:auto;padding:6px 14px;margin:0;" onclick="toggleExportAll()">取消全选</button></div><div id="exportList" style="max-height:220px;overflow:auto;text-align:left;border:1px solid #f0d0dc;border-radius:10px;padding:4px 10px;margin-bottom:12px;"></div><textarea id="exportText" readonly></textarea><button class="menu-btn" onclick="copyExport()">复制导出内容</button><button class="menu-btn secondary" onclick="downloadExport()">下载导出文件</button><button class="menu-btn secondary" onclick="showExportQR()">生成二维码</button><div id="exportQRWrap" style="display:none;text-align:center;margin-top:12px;"><img id="exportQRImg" style="width:240px;height:240px;border:8px solid #fff;box-shadow:0 4px 16px rgba(0,0,0,0.15);border-radius:8px;"><div id="exportQRNote" style="color:#ff3333;font-size:0.85rem;line-height:1.6;margin-top:8px;">二维码包含所选条目的密钥原文，不要截图外发。用另一台设备 / 另一个账号的“导入 - 扫码导入”扫描。</div></div><button class="menu-btn secondary" onclick="closeExportModal();">取消</button></div></div>
+    <div class="v5-modal" id="exportModal"><div class="modal-box"><div class="modal-title">导出</div><div style="color:#ff3333;font-size:0.9rem;line-height:1.6;margin-bottom:12px;text-align:center;">导出内容包含密钥原文，请妥善保管，不要发给任何人。</div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><span id="exportSelectCount" style="color:#666;font-size:0.9rem;"></span><button class="menu-btn secondary" id="exportToggleAll" style="width:auto;padding:6px 14px;margin:0;" onclick="toggleExportAll()">取消全选</button></div><div id="exportList" style="max-height:220px;overflow:auto;text-align:left;border:1px solid #f0d0dc;border-radius:10px;padding:4px 10px;margin-bottom:12px;"></div><button class="menu-btn" onclick="copyExport()">复制导出内容</button><button class="menu-btn secondary" onclick="downloadExport()">下载导出文件</button><button class="menu-btn secondary" onclick="showExportQR()">生成二维码</button><div id="exportQRWrap" style="display:none;text-align:center;margin-top:12px;"><img id="exportQRImg" style="width:240px;height:240px;border:8px solid #fff;box-shadow:0 4px 16px rgba(0,0,0,0.15);border-radius:8px;"><div id="exportQRNote" style="color:#ff3333;font-size:0.85rem;line-height:1.6;margin-top:8px;">二维码包含所选条目的密钥原文，不要截图外发。用另一台设备 / 另一个账号的“导入 - 扫码导入”扫描。</div></div><button class="menu-btn secondary" onclick="closeExportModal();">取消</button></div></div>
     <div class="v5-modal" id="importModal"><div class="modal-box"><div class="modal-title">导入账号</div><div style="color:#666;font-size:0.9rem;line-height:1.6;margin-bottom:12px;text-align:center;">导入到当前账号，已存在的相同密钥会自动跳过，导入后会同步到云端。</div><button class="menu-btn" onclick="document.getElementById('importFile').click();">选择文件导入</button><input type="file" id="importFile" accept=".json,application/json" style="display:none;" onchange="importFromFile(event)"><button class="menu-btn secondary" onclick="closeImportModal(); openImportScan();">扫码导入</button><button class="menu-btn secondary" onclick="closeImportModal();">取消</button></div></div>
     <div class="v5-modal" id="addMenuModal"><div class="modal-box"><div class="modal-title">添加账号</div><button class="menu-btn" onclick="closeAddMenu(); openPasteModal();">粘贴密钥添加</button><button class="menu-btn" onclick="closeAddMenu(); openScanModal();">扫码添加</button><button class="menu-btn secondary" onclick="closeAddMenu();">取消</button></div></div>
     <div class="v5-modal" id="pasteModal"><div class="modal-box"><div class="modal-title">粘贴密钥添加</div><input type="text" id="pasteSecret" placeholder="2FA 密钥 (Base32)" autocomplete="off"><input type="text" id="pasteRemark" placeholder="备注（可不填，默认按顺序编号）"><button class="menu-btn" onclick="addSecretFromPaste()">添加</button><button class="menu-btn secondary" onclick="closePasteModal();">取消</button></div></div>
@@ -1166,14 +1168,14 @@
     <div style="background: #ffffff; border: 2px solid rgba(255,0,85,0.2); border-radius: 20px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; margin: auto; padding: 24px; box-sizing: border-box; color: #1a1a1a;">
         <h3 style="margin: 0 0 16px; text-align: center;">⬇️ 下载客户端</h3>
         <div style="background: rgba(255,0,85,0.05); border: 1px solid rgba(255,0,85,0.15); border-radius: 14px; padding: 16px; margin-bottom: 12px;">
-            <div style="font-weight: bold; font-size: 16px;">💻 Windows 桌面版 v1.0.10 · 106 MB</div>
+            <div style="font-weight: bold; font-size: 16px;">💻 Windows 桌面版 v1.0.11 · 106 MB</div>
             <p style="color: #666; font-size: 13px; line-height: 1.6; margin: 8px 0 12px;">zip 压缩包，解压后运行。首次使用请先完全退出旧版（托盘右键退出），解压到新文件夹再运行，首次打开会自动在桌面生成图标。</p>
-            <a href="https://guo.roselg.xyz/downloads/LG-2FA-win-v110.zip" style="display: block; text-align: center; background: linear-gradient(135deg,#ff0055,#e6004c); color: #fff; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: bold;">⬇️ 下载 Windows 版</a>
+            <a href="https://guo.roselg.xyz/downloads/LG-2FA-win-v111.zip" style="display: block; text-align: center; background: linear-gradient(135deg,#ff0055,#e6004c); color: #fff; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: bold;">⬇️ 下载 Windows 版</a>
         </div>
         <div style="background: rgba(255,0,85,0.05); border: 1px solid rgba(255,0,85,0.15); border-radius: 14px; padding: 16px; margin-bottom: 12px;">
-            <div style="font-weight: bold; font-size: 16px;">📱 安卓手机版 v1.0.7 · 4.2 MB</div>
+            <div style="font-weight: bold; font-size: 16px;">📱 安卓手机版 v1.0.8 · 4.2 MB</div>
             <p style="color: #666; font-size: 13px; line-height: 1.6; margin: 8px 0 12px;">APK 安装包，安装时请允许“安装未知应用”。</p>
-            <a href="https://guo.roselg.xyz/downloads/LG-2FA-android-v107.apk" style="display: block; text-align: center; background: linear-gradient(135deg,#e6004c,#b3003b); color: #fff; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: bold; box-shadow: 0 4px 12px rgba(255,0,85,0.35);">⬇️ 下载安卓版</a>
+            <a href="https://guo.roselg.xyz/downloads/LG-2FA-android-v108.apk" style="display: block; text-align: center; background: linear-gradient(135deg,#e6004c,#b3003b); color: #fff; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: bold; box-shadow: 0 4px 12px rgba(255,0,85,0.35);">⬇️ 下载安卓版</a>
         </div>
         <button onclick="hideClientDownload()" style="width: 100%; margin-top: 4px; padding: 10px; border-radius: 10px; border: 1px solid #ddd; background: #f0f0f0; color: #666; cursor: pointer; font-weight: bold;">关闭</button>
     </div>
