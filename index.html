@@ -185,6 +185,7 @@
         </div>
 
         <button onclick="showClientDownload()" style="width:100%;background:var(--rose-main);color:#fff;border:none;padding:16px;border-radius:8px;font-size:1rem;font-weight:bold;cursor:pointer;box-shadow:var(--glow-rose);">⬇️ 下载客户端</button>
+        <button onclick="backupLocalHistory()" style="width:100%;margin-top:10px;background:#fff;color:var(--rose-main);border:2px solid var(--rose-main);padding:14px;border-radius:8px;font-size:1rem;font-weight:bold;cursor:pointer;">💾 备份本地记录</button>
 
         <div class="glass-panel input-section">
             <input type="text" id="secretInput" placeholder="请输入或粘贴您的 2FA 密钥 (Base32)" autocomplete="off">
@@ -475,6 +476,20 @@
 <script>
 function showClientDownload(){var m=document.getElementById('client-download-modal'); if(m){m.style.display='flex'; document.body.style.overflow='hidden';}}
 function hideClientDownload(){var m=document.getElementById('client-download-modal'); if(m){m.style.display='none'; document.body.style.overflow='';}}
+function backupLocalHistory(){
+  try {
+    var raw = localStorage.getItem('lg_2fa_history');
+    var list = raw ? JSON.parse(raw) : [];
+    if (!list || list.length === 0) { showToast('当前没有本地记录可备份'); return; }
+    var blob = new Blob([JSON.stringify(list, null, 2)], {type: 'application/json'});
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    var d = new Date(); var pad = function(n){ return String(n).padStart(2, '0'); };
+    a.download = 'lg-2fa-backup-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+    showToast('备份文件已开始下载，共 ' + list.length + ' 条，请妥善保管');
+  } catch(e) { showToast('备份失败，请稍后再试'); }
+}
 </script>
 </body>
 </html>
