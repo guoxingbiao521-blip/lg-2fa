@@ -6,7 +6,11 @@
     <title>LG-筑梦电子 2FA 验证中心</title>
     <!-- 引入开源的 OTPAuth 库 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/otpauth/9.2.2/otpauth.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+    <script src="qrcode.min.js"></script>
     <style>
+        @font-face { font-family: 'LGDisplay'; src: url('Anton.woff2') format('woff2'); font-weight: 400; font-display: swap; }
         :root {
             /* 明亮科技风配色 */
             --rose-main: #ff0055;
@@ -155,6 +159,88 @@
                 margin: 0;
             }
         }
+    
+        /* 同步版 v3 新增：独立登录屏 + 弹窗（原页面样式与结构未动，新增部分单独放在这里） */
+        /* 容器与输入框风格取自域名邮箱网站的形状：大圆角卡片、12px 圆角输入框、带底部阴影的立体按钮、按压下沉；颜色保持本页玫红，不用邮箱站的深色底 */
+        .container { display: none; }
+        #loginScreen { width: 100%; max-width: 420px; margin: 60px auto 0 auto; z-index: 1; background: var(--panel-bg); backdrop-filter: blur(10px); border: 1px solid var(--border-light); border-radius: 24px; padding: 40px; box-shadow: var(--shadow-soft); }
+        #loginScreen input { width: 100%; padding: 14px 16px; border: 2px solid rgba(255, 0, 85, 0.3); border-radius: 12px; font-size: 1rem; background: rgba(255,255,255,0.9); outline: none; margin-bottom: 14px; }
+        #loginScreen input:focus { border-color: var(--rose-main); }
+        .login-btn { width: 100%; padding: 14px; border: none; border-radius: 12px; background: var(--rose-main); color: #fff; font-weight: bold; font-size: 1rem; cursor: pointer; box-shadow: 0 5px 0 var(--rose-dark); transition: all 0.1s; }
+        .login-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--rose-dark); }
+        .login-links { display: flex; justify-content: space-between; margin-top: 16px; font-size: 0.9rem; }
+        .login-links span { color: var(--rose-main); cursor: pointer; font-weight: bold; }
+        .login-note { color: var(--text-gray); font-size: 0.85rem; margin-top: 16px; line-height: 1.6; text-align: center; }
+        #syncBar { display: flex; justify-content: space-between; align-items: center; gap: 10px; color: var(--text-gray); font-size: 0.9rem; }
+        #syncBar button { padding: 8px 14px; border: 2px solid var(--rose-main); background: #fff; color: var(--rose-main); border-radius: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 3px 0 var(--rose-dark); }
+        #syncBar button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--rose-dark); }
+        /* 弹窗：沿用原页弹窗的浅色圆角，字段按邮箱站的输入框形状 */
+        #authModal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(244,246,249,0.7); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 2000; }
+        #authModal.active { display: flex; }
+        #authModal .modal-box { width: 90%; max-width: 400px; }
+        #authModal input { width: 100%; padding: 14px 16px; border: 2px solid rgba(255,0,85,0.3); border-radius: 12px; font-size: 1rem; background: rgba(255,255,255,0.9); outline: none; margin-bottom: 12px; }
+        #authModal input:focus { border-color: var(--rose-main); }
+        #authModal .auth-btn { width: 100%; padding: 13px; border: none; border-radius: 12px; background: var(--rose-main); color: #fff; font-weight: bold; font-size: 1rem; cursor: pointer; box-shadow: 0 5px 0 var(--rose-dark); margin-bottom: 10px; }
+        #authModal .auth-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--rose-dark); }
+        #authModal .auth-btn.secondary { background: #fff; color: var(--rose-main); border: 2px solid var(--rose-main); box-shadow: none; }
+        @media (max-width: 768px) {
+            body { padding: 16px; touch-action: pan-y; overscroll-behavior-x: none; }
+            #loginScreen { width: calc(100vw - 32px); max-width: 480px; padding: 28px 24px; margin: auto; }
+            #toast { max-width: 90vw; padding: 14px 24px; font-size: 1rem; }
+        }
+    
+        /* --- v5 新增：顶栏、账号菜单、手机竖排列表（只改布局，颜色/卡片/字体沿用原主题） --- */
+        html, body { overflow-x: hidden; }
+        .container { min-width: 0; }
+        #topBar { display: flex; justify-content: space-between; align-items: center; gap: 10px; color: var(--text-gray); font-size: 0.9rem; z-index: 1; }
+        #topBar .top-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        #topBar .avatar-btn { width: 40px; height: 40px; min-width: 40px; background: var(--rose-main); color: #fff; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 18px; border-radius: 50%; box-shadow: 0 0 15px rgba(255, 0, 85, 0.4); border: none; cursor: pointer; }
+        #topBar .top-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 55vw; }
+        #addBtn { display: none; width: 40px; height: 40px; min-width: 40px; background: var(--rose-main); color: #fff; border: none; border-radius: 50%; font-size: 26px; font-weight: bold; cursor: pointer; box-shadow: 0 5px 0 var(--rose-dark); }
+        #addBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--rose-dark); }
+        .v5-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(244,246,249,0.7); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 2000; }
+        .v5-modal.active { display: flex; }
+        .v5-modal .modal-box { width: 90%; max-width: 400px; }
+        .v5-modal input { width: 100%; padding: 14px 16px; border: 2px solid rgba(255,0,85,0.3); border-radius: 12px; font-size: 1rem; background: rgba(255,255,255,0.9); outline: none; margin-bottom: 12px; }
+        .v5-modal input:focus { border-color: var(--rose-main); }
+        .v5-modal .menu-btn { width: 100%; padding: 13px; border: none; border-radius: 12px; background: var(--rose-main); color: #fff; font-weight: bold; font-size: 1rem; cursor: pointer; box-shadow: 0 5px 0 var(--rose-dark); margin-bottom: 10px; }
+        .v5-modal .menu-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--rose-dark); }
+        .v5-modal .menu-btn.secondary { background: #fff; color: var(--rose-main); border: 2px solid var(--rose-main); box-shadow: none; }
+        .v5-modal .menu-btn.danger { background: #fff; color: #ff3333; border: 2px solid #ff3333; box-shadow: none; }
+        .v5-modal .menu-email { font-weight: bold; color: var(--text-dark); margin-bottom: 16px; word-break: break-all; text-align: center; }
+        #mobileList { display: none; flex-direction: column; gap: 14px; width: 100%; }
+        .mobile-item { background: var(--panel-bg); backdrop-filter: blur(10px); border: 1px solid var(--border-light); border-radius: 12px; padding: 16px; box-shadow: var(--shadow-soft); display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; cursor: pointer; }
+        .mobile-item .mi-left { min-width: 0; flex: 1; }
+        .mobile-item .mi-remark { font-weight: bold; font-size: 1rem; color: var(--text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mobile-item .mi-code { display: inline-block; font-size: 2.2rem; font-weight: 900; color: var(--rose-main); letter-spacing: 7px; font-family: 'Anton', 'LGDisplay', 'Impact', 'Arial Black', 'Segoe UI Black', sans-serif; text-shadow: 2px 2px 0px rgba(255,0,85,0.15), 4px 4px 0px rgba(255,0,85,0.08); margin-top: 6px; }
+        .mobile-item .mi-ring { position: relative; width: 64px; height: 64px; min-width: 64px; display: flex; justify-content: center; align-items: center; }
+        .mobile-item .mi-ring .mi-radar { position: absolute; width: 100%; height: 100%; border: 2px dashed rgba(255, 0, 85, 0.3); border-radius: 50%; animation: spin 8s linear infinite; }
+        .mobile-item .mi-ring svg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-90deg); }
+        .mobile-item .mi-ring .mi-sec-wrap { position: relative; display: flex; flex-direction: column; align-items: center; line-height: 1; }
+        .mobile-item .mi-ring .mi-sec { font-size: 1.3rem; font-weight: 900; color: var(--text-dark); font-family: 'Anton', 'LGDisplay', 'Impact', 'Arial Black', sans-serif; }
+        .mobile-item .mi-ring .mi-sec-unit { font-size: 0.6rem; color: var(--rose-main); font-weight: bold; margin-top: 2px; }
+        body.scanning { background: transparent !important; }
+        body.scanning .container, body.scanning #loginScreen { display: none !important; }
+        #scanView { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; display: none; justify-content: center; align-items: center; z-index: 3000; }
+        #scanView.active { display: flex; }
+        #scanView.native { background: transparent; }
+        #scanView.native #scanVideo { display: none; }
+        #scanView.native #scanLoading { display: none; }
+        #scanVideo { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; background: #000; }
+        #scanFrame { position: relative; width: 70vw; height: 70vw; max-width: 320px; max-height: 320px; border: 2px solid var(--rose-main); border-radius: 16px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.45); pointer-events: none; }
+        #scanHint { position: absolute; bottom: 110px; left: 0; right: 0; text-align: center; color: #fff; font-size: 0.95rem; }
+        #scanCancel { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); padding: 12px 40px; border: 2px solid var(--rose-main); background: #fff; color: var(--rose-main); border-radius: 30px; font-weight: bold; font-size: 1rem; cursor: pointer; }
+        #scanLoading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 1rem; }
+        #scanVideo { width: 100%; border-radius: 12px; background: #000; }
+        #exportText { width: 100%; height: 160px; padding: 12px; border: 2px solid rgba(255,0,85,0.3); border-radius: 12px; font-size: 0.8rem; background: rgba(255,255,255,0.9); outline: none; margin-bottom: 12px; word-break: break-all; }
+        @media (max-width: 768px) {
+            body { padding: 16px; }
+            .container { width: 100%; max-width: 100%; }
+            #addBtn { display: block; }
+            #mobileList { display: flex; }
+            .container .input-section, .container .dashboard, .container .history-panel, .container .header { display: none !important; }
+            #topBar { width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -174,7 +260,28 @@
         </div>
     </div>
 
+    <div id="loginScreen">
+        <div class="header" style="margin-top:0;">
+            <div class="header-icon">LG</div>
+            <div class="header-text">
+                <h1 style="font-size:2.2rem;">筑梦电子</h1>
+                <p>2FA 验证码生成器</p>
+            </div>
+        </div>
+        <input type="email" id="loginEmail" placeholder="邮箱" autocomplete="email">
+        <input type="password" id="loginPassword" placeholder="密码" autocomplete="current-password">
+        <button class="login-btn" onclick="syncLogin()">登录</button>
+        <div id="loginBack" style="display:none;text-align:center;margin-top:12px;"><span style="color:#999;font-size:0.9rem;cursor:pointer;" onclick="cancelAddAccount()">← 返回当前账号</span></div>
+        <div style="text-align:center;margin-top:12px;"><span style="color:var(--rose-main);font-size:0.9rem;font-weight:bold;cursor:pointer;" onclick="backToLocal()">不用登录，直接本地使用</span></div>
+        <div class="login-links"><span onclick="openRegisterModal()">还没有账号？注册</span><span onclick="openForgotModal()">忘记密码？</span></div>
+        <div class="login-note">登录后可将本地记录同步到云端，换设备也能用；不登录也可以直接在本地使用，记录只保存在本浏览器。</div>
+    </div>
+
+    <div id="authModal"><div class="modal-box"><div class="modal-title" id="authModalTitle">注册</div><div id="authModalBody"></div><div class="modal-actions"><button class="modal-btn modal-btn-cancel" onclick="closeAuthModal()">取消</button></div></div></div>
+
     <div class="container">
+        <div id="topBar"><span class="top-left"><button class="avatar-btn" onclick="webAvatarClick()" title="账号">LG</button><span class="top-email"><b id="authEmailText"></b><span id="offlineNote" style="display:none;">（离线模式）</span><span id="pendingNote" style="display:none; margin-left:8px;"></span></span></span><button id="addBtn" onclick="openAddMenu()" title="添加">+</button></div>
+
         <!-- 头部 LOGO 与标题 -->
         <div class="header">
             <div class="header-icon">LG</div>
@@ -184,25 +291,27 @@
             </div>
         </div>
 
+        <div id="webLocalNotice" style="background:linear-gradient(135deg,rgba(255,0,85,0.10),rgba(255,0,85,0.04));border:1px solid rgba(255,0,85,0.45);border-left:5px solid var(--rose-main);border-radius:10px;padding:12px 14px;margin-bottom:16px;color:#b3003b;font-size:0.95rem;font-weight:bold;line-height:1.7;">⚠️ 未登录：记录仅保存在本浏览器中，清理浏览器数据、更换设备或浏览器后将无法保留，也无法同步到其他设备。登录后可同步到云端，随时随地使用。</div>
+
         <button onclick="showClientDownload()" style="width:100%;background:var(--rose-main);color:#fff;border:none;padding:16px;border-radius:8px;font-size:1rem;font-weight:bold;cursor:pointer;box-shadow:var(--glow-rose);">⬇️ 下载客户端</button>
         <button onclick="backupLocalHistory()" style="width:100%;margin-top:10px;background:#fff;color:var(--rose-main);border:2px solid var(--rose-main);padding:14px;border-radius:8px;font-size:1rem;font-weight:bold;cursor:pointer;">💾 备份本地记录</button>
 
-        <div class="glass-panel input-section">
+        <div class="glass-panel input-section" style="margin-top:16px;">
             <input type="text" id="secretInput" placeholder="请输入或粘贴您的 2FA 密钥 (Base32)" autocomplete="off">
             <button class="btn-generate" onclick="generateAndSave()">生成验证码</button>
         </div>
 
         <div class="dashboard">
             <div class="glass-panel code-container">
-                <div class="decor-label">AUTH CODE // 动态口令</div>
+                <div class="decor-label">动态口令</div>
                 <div class="totp-code" id="totpCode">------</div>
                 <button class="btn-copy" onclick="copyCode()">复制验证码</button>
             </div>
 
             <div class="glass-panel timer-container">
-                <div class="decor-label">SYNC STATUS // 节点同步</div>
-                <div class="micro-data md-top-right">PROTOCOL: TOTP<br>ALG: SHA-1</div>
-                <div class="micro-data md-bottom-left">PERIOD: 30s<br>DIGITS: 6</div>
+                <div class="decor-label">节点同步</div>
+                <div class="micro-data md-top-right">协议：TOTP<br>算法：SHA-1</div>
+                <div class="micro-data md-bottom-left">周期：30秒<br>位数：6位</div>
                 <div class="clock-wrapper">
                     <div class="radar-ring"></div>
                     <svg class="progress-ring" width="120" height="120">
@@ -211,17 +320,18 @@
                     </svg>
                     <div class="clock-text">
                         <div id="timerText">30</div>
-                        <span>SECONDS</span>
+                        <span>秒</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="glass-panel">
+        <div class="glass-panel history-panel">
             <div class="history-header">历史使用记录</div>
             <div id="historyList"></div>
         </div>
 
+        <div id="mobileList"></div>
     </div>
 
     <script>
@@ -284,7 +394,7 @@
         }
 
         function copyToClipboard(text, successMsg) {
-            if (!text || text === "------" || text === "ERROR!") {
+            if (!text || text === "------") {
                 showToast("没有可复制的内容");
                 return;
             }
@@ -340,7 +450,7 @@
                 });
                 codeEl.innerText = totp.generate();
             } catch (e) {
-                codeEl.innerText = "ERROR!";
+                codeEl.innerText = "------";
                 showToast("当前加载的密钥无效");
             }
         }
@@ -457,42 +567,703 @@
             });
         }
     </script>
-<div id="client-download-modal" onclick="if(event.target===this) hideClientDownload()" style="display: none; position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(0,0,0,0.6); z-index: 100000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; overflow-y: auto;">
+
+    <script>
+    // ================= 同步版 v4：离线改动队列（原页面脚本未动，登录屏/弹窗沿用 v3） =================
+    // 离线也能新增、删除、改备注：先写本机缓存 + 记入同步队列（localStorage，重启也不丢），联网后自动把队列推到云端。
+    // 备注同样走队列：在线改备注调 PATCH，离线改备注先改本机、记队列，同步时再调 PATCH，同步后以云端列表为准（另一台设备删的记录也会同步过来）。
+    // 登录过期时只清登录凭证、不清缓存和队列，重新登录同一账号后继续同步；主动点退出登录才会清空缓存和队列。
+    // 线上 index.html 未改动，本文件是本地预览版，未推送到 GitHub。
+    const API_BASE = 'https://api.2fa.roselg.xyz';
+    const SYNC_CACHE_KEY = 'lg_2fa_sync_history';
+    const SYNC_QUEUE_KEY = 'lg_2fa_sync_queue';
+    let syncCache = [];
+    let syncQueue = [];
+    let offlineMode = false;
+    const ACCOUNTS_KEY = 'lg_2fa_accounts'; const CURRENT_KEY = 'lg_2fa_current'; let addingAccount = false;
+    function getAccounts() { try { const a = JSON.parse(localStorage.getItem(ACCOUNTS_KEY) || '[]'); return Array.isArray(a) ? a.filter(e => typeof e === 'string' && e) : []; } catch (e) { return []; } }
+    function saveAccounts(a) { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(a)); }
+    function addAccountEmail(email) { const a = getAccounts(); if (!a.includes(email)) { a.push(email); saveAccounts(a); } }
+    function syncEmail() { return localStorage.getItem(CURRENT_KEY) || localStorage.getItem('lg_2fa_email') || ''; }
+    function syncToken() { const em = syncEmail(); if (!em) return ''; return localStorage.getItem('lg_2fa_token_' + em) || (em === localStorage.getItem('lg_2fa_email') ? (localStorage.getItem('lg_2fa_token') || '') : ''); }
+    function setSyncToken(email, token) { localStorage.setItem('lg_2fa_token_' + email, token); }
+    function clearSyncToken(email) { if (!email) return; localStorage.removeItem('lg_2fa_token_' + email); if (email === localStorage.getItem('lg_2fa_email')) localStorage.removeItem('lg_2fa_token'); }
+    function setCurrentEmail(email) { localStorage.setItem(CURRENT_KEY, email); localStorage.setItem('lg_2fa_email', email); addAccountEmail(email); }
+    function cacheKey() { const em = syncEmail(); return em ? SYNC_CACHE_KEY + '_' + em : SYNC_CACHE_KEY; }
+    function queueKey() { const em = syncEmail(); return em ? SYNC_QUEUE_KEY + '_' + em : SYNC_QUEUE_KEY; }
+    (function migrateLegacyAccount() { try { const le = localStorage.getItem('lg_2fa_email'); if (le && !localStorage.getItem(CURRENT_KEY)) { localStorage.setItem(CURRENT_KEY, le); addAccountEmail(le); const lt = localStorage.getItem('lg_2fa_token'); if (lt) localStorage.setItem('lg_2fa_token_' + le, lt); const c = localStorage.getItem(SYNC_CACHE_KEY); if (c !== null) localStorage.setItem(SYNC_CACHE_KEY + '_' + le, c); const q = localStorage.getItem(SYNC_QUEUE_KEY); if (q !== null) localStorage.setItem(SYNC_QUEUE_KEY + '_' + le, q); } } catch (e) {} })();
+    function syncMode() { return !!syncToken(); }
+    function newLocalId() { try { return crypto.randomUUID(); } catch (e) { return 'local-' + Date.now() + '-' + Math.floor(Math.random() * 1000000); } }
+    function loadCache() { try { const raw = localStorage.getItem(cacheKey()); const fb = (!raw && syncEmail() === localStorage.getItem('lg_2fa_email')) ? localStorage.getItem(SYNC_CACHE_KEY) : null; syncCache = JSON.parse(raw || fb || '[]'); } catch (e) { syncCache = []; } syncCache.forEach(x => { if (!x.localId) x.localId = newLocalId(); }); }
+    function saveCache() { localStorage.setItem(cacheKey(), JSON.stringify(syncCache)); }
+    function loadQueue() { try { const raw = localStorage.getItem(queueKey()); const fb = (!raw && syncEmail() === localStorage.getItem('lg_2fa_email')) ? localStorage.getItem(SYNC_QUEUE_KEY) : null; syncQueue = JSON.parse(raw || fb || '[]'); } catch (e) { syncQueue = []; } }
+    function saveQueue() { localStorage.setItem(queueKey(), JSON.stringify(syncQueue)); updatePendingNote(); }
+    function isPending(localId) { return syncQueue.some(op => op.localId === localId); }
+    function updatePendingNote() { const el = document.getElementById('pendingNote'); if (!el) return; if (syncQueue.length > 0) { el.style.display = 'inline'; el.innerText = '待同步 ' + syncQueue.length + ' 条'; } else { el.style.display = 'none'; } const sb = document.getElementById('accountSyncBtn'); if (sb) sb.innerText = syncQueue.length > 0 ? '立即同步（待同步 ' + syncQueue.length + ' 条）' : '立即同步'; }
+    function showMain() { document.getElementById('loginScreen').style.display = 'none'; document.querySelector('.container').style.display = 'flex'; document.getElementById('authEmailText').innerText = syncEmail(); const ae = document.getElementById('accountEmailText'); if (ae) ae.innerText = syncEmail(); document.getElementById('offlineNote').style.display = offlineMode ? 'inline' : 'none'; updatePendingNote(); }
+    function showLogin() { document.getElementById('loginScreen').style.display = 'block'; document.querySelector('.container').style.display = 'none'; const le = document.getElementById('loginEmail'); if (le && syncEmail()) le.value = syncEmail(); const lb = document.getElementById('loginBack'); if (lb) lb.style.display = (addingAccount && getAccounts().length > 0) ? 'block' : 'none'; }
+    function setOffline(v) { offlineMode = v; const el = document.getElementById('offlineNote'); if (el) el.style.display = v ? 'inline' : 'none'; }
+    function isExpiredError(e) { return String(e && e.message || '').indexOf('登录已过期') >= 0; }
+    // 后端返回的 message 现在已经是中文；这里再兜一层：万一某处只返回了英文
+    // 错误码（比如 invalid_code），也不要把英文码原样弹给用户，一律转成中文。
+    function zhError(d, status) {
+        if (d && d.message) return d.message;
+        const map = { 'invalid_email': '邮箱格式不对。', 'weak_password': '密码至少需要 8 位。', 'email_registered': '该邮箱已经注册过了。', 'invalid_credentials': '邮箱或密码不对。', 'not_verified': '请先验证邮箱后再登录。', 'invalid_code': d && d.reason === 'expired' ? '验证码已经过期了，请重新发送。' : d && d.reason === 'too_many_attempts' ? '验证码尝试次数太多了，请重新发送。' : d && d.reason === 'no_code' ? '没有找到可用的验证码，请重新发送。' : '验证码不对。', 'too_many_requests': '请求太频繁了，请稍后再试。', 'email_not_configured': '邮件发送还没有配置好。', 'email_send_failed': '验证码邮件发送失败，请再试一次。', 'invalid_label': '备注不能为空，也不能超过 100 个字。', 'invalid_secret': '密钥必须是 Base32 格式。', 'not_found': '找不到这条记录。', 'unauthorized': '登录已过期，请重新登录。', 'internal_error': '服务器出了点问题，请稍后再试。' };
+        if (d && map[d.error]) return map[d.error];
+        return '请求失败 ' + status;
+    }
+    async function apiFetch(path, method, body) {
+        const res = await fetch(API_BASE + path, { method: method, headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + syncToken() }, body: body ? JSON.stringify(body) : undefined });
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401) { clearSyncToken(syncEmail()); showLogin(); throw new Error('登录已过期，请重新登录'); }
+        if (!res.ok) throw new Error(zhError(data, res.status));
+        return data;
+    }
+    async function postAuth(path, body) {
+        const res = await fetch(API_BASE + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(zhError(d, res.status));
+        return d;
+    }
+    function closeAuthModal() { document.getElementById('authModal').classList.remove('active'); }
+    function openRegisterModal() {
+        document.getElementById('authModalTitle').innerText = '注册';
+        document.getElementById('authModalBody').innerHTML = '<input type="email" id="regEmail" placeholder="邮箱"><input type="password" id="regPassword" placeholder="设置密码（至少 8 位）"><input type="password" id="regPassword2" placeholder="确认密码"><button class="auth-btn" onclick="registerStep1()">发送验证码</button>';
+        document.getElementById('authModal').classList.add('active');
+    }
+    let pendingRegEmail = '';
+    async function registerStep1() {
+        const email = document.getElementById('regEmail').value.trim();
+        const pw = document.getElementById('regPassword').value; const pw2 = document.getElementById('regPassword2').value;
+        if (!email || pw.length < 8) { showToast('请填邮箱，密码至少 8 位'); return; }
+        if (pw !== pw2) { showToast('两次密码不一致'); return; }
+        try {
+            await postAuth('/api/auth/register', { email: email, password: pw });
+            pendingRegEmail = email;
+            document.getElementById('authModalTitle').innerText = '输入邮箱验证码';
+            document.getElementById('authModalBody').innerHTML = '<input type="text" id="regCode" placeholder="邮箱验证码（6 位）" inputmode="numeric"><button class="auth-btn" onclick="registerStep2()">验证并完成注册</button>';
+            showToast('验证码已发到邮箱');
+        } catch (e) { showToast(e.message); }
+    }
+    async function registerStep2() {
+        const email = pendingRegEmail; const codeEl = document.getElementById('regCode'); const code = codeEl ? codeEl.value.trim() : '';
+        try {
+            await postAuth('/api/auth/verify', { email: email, code: code });
+            closeAuthModal(); document.getElementById('loginEmail').value = email; showToast('注册成功，请登录');
+        } catch (e) { showToast(e.message); }
+    }
+    function openForgotModal() {
+        document.getElementById('authModalTitle').innerText = '找回密码';
+        document.getElementById('authModalBody').innerHTML = '<input type="email" id="forgotEmail" placeholder="邮箱"><button class="auth-btn" onclick="forgotStep1()">发送重置码</button>';
+        document.getElementById('authModal').classList.add('active');
+    }
+    let pendingForgotEmail = '';
+    async function forgotStep1() {
+        const email = document.getElementById('forgotEmail').value.trim(); if (!email) { showToast('请填邮箱'); return; }
+        try {
+            await postAuth('/api/auth/forgot', { email: email });
+            pendingForgotEmail = email;
+            document.getElementById('authModalTitle').innerText = '输入重置码和新密码';
+            document.getElementById('authModalBody').innerHTML = '<input type="text" id="forgotCode" placeholder="重置码（6 位）" inputmode="numeric"><input type="password" id="forgotNewPw" placeholder="新密码（至少 8 位）"><input type="password" id="forgotNewPw2" placeholder="确认新密码"><button class="auth-btn" onclick="forgotStep2()">重置密码</button>';
+            showToast('如果该邮箱已注册，重置码已发送');
+        } catch (e) { showToast(e.message); }
+    }
+    async function forgotStep2() {
+        const email = pendingForgotEmail; const code = document.getElementById('forgotCode').value.trim(); const pw = document.getElementById('forgotNewPw').value; const pw2 = document.getElementById('forgotNewPw2').value;
+        if (pw.length < 8) { showToast('新密码至少 8 位'); return; } if (pw !== pw2) { showToast('两次密码不一致'); return; }
+        try { await postAuth('/api/auth/reset', { email: email, code: code, newPassword: pw }); closeAuthModal(); showToast('密码已重置，请用新密码登录'); } catch (e) { showToast(e.message); }
+    }
+    async function syncLogin() {
+        const email = document.getElementById('loginEmail').value.trim(); const pw = document.getElementById('loginPassword').value;
+        if (!email || !pw) { showToast('请填邮箱和密码'); return; }
+        try {
+            const d = await postAuth('/api/auth/login', { email: email, password: pw });
+            const newEmail = d.email || email; const wasAdding = addingAccount; const isNew = !getAccounts().includes(newEmail);
+            pendingSwitchBack = null; setCurrentEmail(newEmail); setSyncToken(newEmail, d.token);
+            loadCache(); loadQueue(); setOffline(false); showMain(); startAutoSync(); await syncFromServer(); addingAccount = false; maybeShowLocalSyncPopup();
+            showToast(wasAdding ? (isNew ? '已添加并切换到 ' + newEmail : '已切换到 ' + newEmail) : '登录成功');
+        } catch (e) { showToast(e.message); }
+    }
+    function syncLogout() {
+        const em = syncEmail(); clearSyncToken(em); localStorage.removeItem(cacheKey()); localStorage.removeItem(queueKey());
+        const rest = getAccounts().filter(e => e !== em); saveAccounts(rest);
+        syncCache = []; syncQueue = []; currentSecret = ''; document.getElementById('totpCode').innerText = '------'; setOffline(false);
+        if (rest.length > 0) { localStorage.setItem(CURRENT_KEY, rest[0]); localStorage.setItem('lg_2fa_email', rest[0]); loadCache(); loadQueue(); showMain(); startAutoSync(); syncFromServer(); showToast('已退出 ' + em + '，已切换到 ' + rest[0]); }
+        else { localStorage.removeItem(CURRENT_KEY); localStorage.removeItem('lg_2fa_email'); addingAccount = false; showMain(); renderHistory(); updateTOTP(); showToast('已退出登录'); }
+    }
+    let pendingSwitchBack = null;
+    async function switchAccount(email) {
+        if (!email || email === syncEmail()) { closeAccountMenu(); return; }
+        const prev = syncEmail(); closeAccountMenu(); setCurrentEmail(email); loadCache(); loadQueue(); showMain(); renderHistory(); updateTOTP(); startAutoSync();
+        if (!syncToken()) { pendingSwitchBack = prev; addingAccount = true; showLogin(); showToast('请用密码登录 ' + email); return; }
+        const st = await syncFromServer();
+        if (st === 'expired') { pendingSwitchBack = prev; addingAccount = true; showLogin(); showToast('该账号登录已过期，请重新登录'); } else { pendingSwitchBack = null; }
+    }
+    function openAddAccount() { closeAccountMenu(); addingAccount = true; document.getElementById('loginPassword').value = ''; showLogin(); }
+    function cancelAddAccount() { if (pendingSwitchBack) { const back = pendingSwitchBack; pendingSwitchBack = null; addingAccount = false; setCurrentEmail(back); loadCache(); loadQueue(); showMain(); renderHistory(); updateTOTP(); return; } addingAccount = false; if (syncMode()) { showMain(); renderHistory(); updateTOTP(); } else { showMain(); renderHistory(); updateTOTP(); } }
+    function renderAccountList() {
+        const box = document.getElementById('accountList'); if (!box) return; const cur = syncEmail(); const accs = getAccounts();
+        if (accs.length === 0) { box.innerHTML = ''; return; }
+        box.innerHTML = '<div style="font-size:0.85rem;color:#999;margin:12px 0 6px;text-align:left;">切换账号</div>' + accs.map(e => '<button class="menu-btn' + (e === cur ? '' : ' secondary') + '" onclick="switchAccount(\'' + e.replace(/'/g, '') + '\')">' + e + (e === cur ? '（当前）' : '') + '</button>').join('');
+    }
+    function queueCreate(entry) { syncQueue.push({ type: 'create', localId: entry.localId, label: entry.remark, secret: entry.secret }); saveQueue(); }
+    function queueUpdate(entry) {
+        const createOp = syncQueue.find(op => op.type === 'create' && op.localId === entry.localId);
+        if (createOp) { createOp.label = entry.remark; saveQueue(); return; }
+        const updateOp = syncQueue.find(op => op.type === 'update' && op.localId === entry.localId);
+        if (updateOp) { updateOp.label = entry.remark; saveQueue(); return; }
+        syncQueue.push({ type: 'update', localId: entry.localId, serverId: entry.id, label: entry.remark }); saveQueue();
+    }
+    function queueDelete(entry) {
+        syncQueue = syncQueue.filter(op => !(op.localId === entry.localId && (op.type === 'create' || op.type === 'update')));
+        if (entry.id) syncQueue.push({ type: 'delete', serverId: entry.id }); saveQueue();
+    }
+    async function processQueue() {
+        while (syncQueue.length > 0) {
+            const op = syncQueue[0];
+            if (op.type === 'create') {
+                const created = await apiFetch('/api/vault', 'POST', { label: op.label, secret: op.secret });
+                const entry = syncCache.find(x => x.localId === op.localId); if (entry) entry.id = created.id; saveCache();
+            } else if (op.type === 'update') {
+                await apiFetch('/api/vault/' + op.serverId, 'PATCH', { label: op.label });
+            } else if (op.type === 'delete') {
+                await apiFetch('/api/vault/' + op.serverId, 'DELETE');
+            }
+            syncQueue.shift(); saveQueue();
+        }
+    }
+    async function syncFromServer(silent) {
+        if (!syncMode()) return 'offline';
+        const hadQueue = syncQueue.length > 0;
+        try {
+            await processQueue();
+            const list = await apiFetch('/api/vault', 'GET');
+            const rebuilt = [];
+            for (const entry of (list.entries || [])) {
+                const s = await apiFetch('/api/vault/' + entry.id + '/secret', 'GET');
+                const old = syncCache.find(x => x.id === entry.id);
+                rebuilt.push({ id: entry.id, localId: old ? old.localId : newLocalId(), remark: entry.label, secret: s.secret });
+            }
+            syncCache = rebuilt; saveCache(); setOffline(false); renderHistory(); updateTOTP();
+            if (hadQueue && !silent) showToast('同步完成'); return 'ok';
+        } catch (e) {
+            if (isExpiredError(e)) { showToast(e.message); return 'expired'; }
+            setOffline(true); loadCache(); loadQueue(); renderHistory(); updateTOTP();
+            if (syncQueue.length > 0 && !silent) showToast('离线模式：本地改动已保存，联网后自动同步'); return 'offline';
+        }
+    }
+    let autoSyncTimer = null; let autoSyncRunning = false;
+    async function autoSyncSilent() {
+        if (!syncMode()) return;
+        if (autoSyncRunning) return;
+        if (document.hidden) return;
+        const em = document.getElementById('entryModal');
+        if (em && em.classList.contains('active')) return;
+        autoSyncRunning = true;
+        try { await syncFromServer(true); } catch (e) {}
+        autoSyncRunning = false;
+    }
+    function startAutoSync() {
+        if (autoSyncTimer) clearInterval(autoSyncTimer);
+        autoSyncTimer = setInterval(autoSyncSilent, 30000);
+    }
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) autoSyncSilent(); });
+    window.addEventListener('focus', () => autoSyncSilent());
+    const localGenerateAndSave = generateAndSave;
+    const localRenderHistory = renderHistory;
+    const localDeleteAccount = deleteAccount;
+    const localEditRemark = editRemark;
+    generateAndSave = async function() {
+        if (!syncMode()) { showToast('请先登录'); showLogin(); return; }
+        const clean = cleanSecret(document.getElementById('secretInput').value);
+        if (!clean) { showToast('请输入密钥'); return; }
+        try { OTPAuth.Secret.fromBase32(clean); } catch(e) { showToast('非法的 Base32 密钥格式，请检查'); return; }
+        try {
+            const created = await apiFetch('/api/vault', 'POST', { label: '账号 ' + (syncCache.length + 1), secret: clean });
+            syncCache.push({ id: created.id, localId: newLocalId(), remark: created.label, secret: clean }); saveCache();
+            document.getElementById('secretInput').value = ''; renderHistory(); useAccount(clean); setOffline(false); showToast('已保存到云端');
+        } catch (e) {
+            if (isExpiredError(e)) { showToast(e.message); return; }
+            const entry = { id: null, localId: newLocalId(), remark: '账号 ' + (syncCache.length + 1), secret: clean };
+            syncCache.push(entry); queueCreate(entry); saveCache();
+            document.getElementById('secretInput').value = ''; renderHistory(); useAccount(clean); setOffline(true); showToast('已保存到本机，联网后自动同步');
+        }
+    };
+    renderHistory = function() {
+        if (!syncMode()) { localRenderHistory(); return; }
+        const listEl = document.getElementById('historyList'); listEl.innerHTML = '';
+        if (syncCache.length === 0) { listEl.innerHTML = "<div style='color: #999; text-align: center; padding: 20px 0;'>同步记录为空，先在上方输入密钥生成一条</div>"; return; }
+        [...syncCache].reverse().forEach(item => {
+            const div = document.createElement('div'); div.className = 'history-item';
+            div.innerHTML = '<div class="history-name"></div><div class="history-actions"><button class="btn-use">使用此记录</button><button>复制密钥</button><button>修改备注</button><button>删除</button></div>';
+            div.querySelector('.history-name').innerText = item.remark + (isPending(item.localId) ? ' · 待同步' : '');
+            const btns = div.querySelectorAll('button');
+            btns[0].onclick = () => useAccount(item.secret);
+            btns[1].onclick = () => copySecret(item.secret);
+            btns[2].onclick = () => editRemark(item.localId);
+            btns[3].onclick = () => deleteAccount(item.localId); btns[3].style.color = '#ff3333';
+            listEl.appendChild(div);
+        });
+    };
+    deleteAccount = async function(localId) {
+        if (!syncMode()) { localDeleteAccount(localId); return; }
+        const entry = syncCache.find(x => x.localId === localId); if (!entry) return;
+        showConfirm('确定要删除这条同步记录吗？', async (confirmed) => {
+            if (!confirmed) return;
+            if (!entry.id) { queueDelete(entry); syncCache = syncCache.filter(x => x.localId !== localId); saveCache(); renderHistory(); showToast('已删除（未同步的本地记录）'); return; }
+            try {
+                await apiFetch('/api/vault/' + entry.id, 'DELETE');
+                if (entry.secret === currentSecret) { currentSecret = ''; updateTOTP(); }
+                syncCache = syncCache.filter(x => x.localId !== localId); saveCache(); renderHistory(); setOffline(false); showToast('记录已删除');
+            } catch (e) {
+                if (isExpiredError(e)) { showToast(e.message); return; }
+                queueDelete(entry); syncCache = syncCache.filter(x => x.localId !== localId); saveCache(); renderHistory(); setOffline(true); showToast('已在本机删除，联网后同步到云端');
+            }
+        });
+    };
+    editRemark = function(localId) {
+        if (!syncMode()) { localEditRemark(localId); return; }
+        const item = syncCache.find(x => x.localId === localId); if (!item) return;
+        showPrompt('请输入新的账号备注名:', item.remark, async (newRemark) => {
+            if (newRemark !== null && newRemark.trim() !== '') {
+                const label = newRemark.trim(); item.remark = label;
+                if (!item.id) { queueUpdate(item); saveCache(); renderHistory(); showToast('备注已更新，联网后同步到云端'); return; }
+                saveCache(); renderHistory(); showToast('备注已更新');
+                (async () => { try { await apiFetch('/api/vault/' + item.id, 'PATCH', { label: label }); setOffline(false); } catch (e) { queueUpdate(item); saveCache(); renderHistory(); setOffline(true); if (!isExpiredError(e)) showToast('备注已在本机更新，联网后同步到云端'); } })();
+            }
+        });
+    };
+
+    // ================= v5：账号菜单、手机竖排列表、加号（粘贴/扫码）、导出 =================
+    // 风格不变：所有新界面沿用原主题变量（玫红、玻璃卡片、圆角按钮），只改布局。
+    function showV5(id) { const el = document.getElementById(id); if (el) el.classList.add('active'); }
+    function hideV5(id) { const el = document.getElementById(id); if (el) el.classList.remove('active'); }
+    function openAccountMenu() { const ae = document.getElementById('accountEmailText'); if (ae) ae.innerText = syncEmail(); updatePendingNote(); renderAccountList(); showV5('accountMenuModal'); }
+    function closeAccountMenu() { hideV5('accountMenuModal'); }
+    function openChangePwModal() { showV5('changePwModal'); }
+    function closeChangePwModal() { hideV5('changePwModal'); }
+    async function changePassword() {
+        const oldPw = document.getElementById('oldPw').value; const newPw = document.getElementById('newPw').value; const newPw2 = document.getElementById('newPw2').value;
+        if (newPw.length < 8) { showToast('新密码至少 8 位'); return; } if (newPw !== newPw2) { showToast('两次新密码不一致'); return; }
+        try { const d = await apiFetch('/api/auth/change-password', 'POST', { oldPassword: oldPw, newPassword: newPw }); if (d.token) setSyncToken(syncEmail(), d.token); closeChangePwModal(); showToast(d.message || '密码已修改'); } catch (e) { showToast(e.message); }
+    }
+    function kickOthers() {
+        showConfirm('确定要剔除其他设备吗？本机保持登录，其他设备需要重新登录。', async (confirmed) => {
+            if (!confirmed) return;
+            try { const d = await apiFetch('/api/auth/kick-others', 'POST', {}); if (d.token) setSyncToken(syncEmail(), d.token); showToast(d.message || '已剔除其他设备'); } catch (e) { showToast(e.message); }
+        });
+    }
+    function exportEntryKey(x, i) { return x.localId ? x.localId : ('id' + (x.id != null ? x.id : i)); }
+    function exportSourceEntries() { return syncMode() ? syncCache : getHistory(); }
+    let exportSelected = new Set();
+    function buildExportData(selectedKeys) {
+        let entries = exportSourceEntries();
+        if (selectedKeys) entries = entries.filter((x, i) => selectedKeys.has(exportEntryKey(x, i)));
+        return { app: 'LG筑梦电子2FA', email: syncEmail(), exportedAt: new Date().toISOString(), entries: entries.map(x => ({ label: x.remark, secret: x.secret })) };
+    }
+    function updateExportOutput() {
+        document.getElementById('exportText').value = JSON.stringify(buildExportData(exportSelected), null, 2);
+        const wrap = document.getElementById('exportQRWrap'); if (wrap) wrap.style.display = 'none';
+        const count = document.getElementById('exportSelectCount'); if (count) count.innerText = '已选 ' + exportSelected.size + ' / ' + exportSourceEntries().length + ' 条';
+        const tog = document.getElementById('exportToggleAll'); if (tog) tog.innerText = (exportSelected.size > 0 && exportSelected.size === exportSourceEntries().length) ? '取消全选' : '全选';
+    }
+    function renderExportList() {
+        const listEl = document.getElementById('exportList'); if (!listEl) return;
+        listEl.innerHTML = '';
+        const entries = exportSourceEntries();
+        if (entries.length === 0) { listEl.innerText = '当前账号还没有条目'; return; }
+        entries.forEach((x, i) => {
+            const key = exportEntryKey(x, i);
+            const label = document.createElement('label');
+            label.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid #f7e6ec;cursor:pointer;';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox'; cb.checked = exportSelected.has(key); cb.style.cssText = 'width:18px;height:18px;accent-color:#ff0055;flex-shrink:0;';
+            cb.onchange = () => { if (cb.checked) exportSelected.add(key); else exportSelected.delete(key); updateExportOutput(); };
+            const sp = document.createElement('span');
+            sp.innerText = (x.remark || '未命名') + (typeof isPending === 'function' && x.localId && isPending(x.localId) ? ' · 待同步' : '');
+            sp.style.cssText = 'font-size:0.95rem;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+            label.appendChild(cb); label.appendChild(sp); listEl.appendChild(label);
+        });
+    }
+    function toggleExportAll() {
+        const entries = exportSourceEntries();
+        if (exportSelected.size === entries.length && entries.length > 0) exportSelected.clear();
+        else entries.forEach((x, i) => exportSelected.add(exportEntryKey(x, i)));
+        renderExportList(); updateExportOutput();
+    }
+    function openExportModal() {
+        exportSelected = new Set();
+        exportSourceEntries().forEach((x, i) => exportSelected.add(exportEntryKey(x, i)));
+        renderExportList(); updateExportOutput(); showV5('exportModal');
+    }
+    function closeExportModal() { hideV5('exportModal'); }
+    function copyExport() { if (exportSelected.size === 0) { showToast('请先勾选至少一条要导出的账号'); return; } copyToClipboard(document.getElementById('exportText').value, '导出内容已复制'); }
+    function downloadExport() {
+        if (exportSelected.size === 0) { showToast('请先勾选至少一条要导出的账号'); return; }
+        try {
+            const blob = new Blob([document.getElementById('exportText').value], { type: 'application/json' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            const d = new Date(); const pad = (n) => String(n).padStart(2, '0');
+            a.download = 'lg-2fa-export-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '.json';
+            document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+            showToast('导出文件已开始下载');
+        } catch (e) { showToast('下载失败，可以用“复制导出内容”'); }
+    }
+    function openImportModal() { showV5('importModal'); }
+    function closeImportModal() { hideV5('importModal'); }
+    function showExportQR() {
+        if (exportSelected.size === 0) { showToast('请先勾选至少一条要导出的账号'); return; }
+        if (typeof qrcode === 'undefined') { showToast('二维码组件还没加载好，请稍后再试'); return; }
+        const data = JSON.stringify(buildExportData(exportSelected));
+        const wrap = document.getElementById('exportQRWrap'); const img = document.getElementById('exportQRImg'); const note = document.getElementById('exportQRNote');
+        if (data.length > 1500 && note) note.innerText = '条目较多，二维码很密（' + data.length + ' 字），扫不出来时请改用文件导入，或只勾选部分条目再生成。二维码包含所选条目的密钥原文，不要截图外发。用另一台设备 / 另一个账号的“导入 - 扫码导入”扫描。';
+        try { const qr = qrcode(0, 'M'); qr.addData(data); qr.make(); img.src = qr.createDataURL(5, 8); wrap.style.display = 'block'; } catch (e) { showToast('条目太多，生成二维码失败，请改用文件导入'); }
+    }
+    function parseExportData(text) {
+        let obj;
+        try { obj = JSON.parse(text); } catch (e) { return { error: 'not-json' }; }
+        let raw = null;
+        if (Array.isArray(obj)) raw = obj;
+        else if (obj && Array.isArray(obj.entries)) raw = obj.entries;
+        else if (obj && typeof obj.secret === 'string') raw = [obj];
+        if (!raw) return { error: 'no-entries' };
+        const out = [];
+        for (const e of raw) { if (!e || typeof e.secret !== 'string') continue; const clean = cleanSecret(e.secret); if (!clean) continue; out.push({ label: typeof e.label === 'string' && e.label ? e.label : (typeof e.remark === 'string' && e.remark ? e.remark : ''), secret: clean }); }
+        if (out.length === 0) return { error: 'no-entries' };
+        return out;
+    }
+    async function importEntries(list) {
+        if (!syncMode()) { showToast('请先登录'); showLogin(); return; }
+        let imported = 0, skipped = 0, failed = 0, expired = false;
+        for (const e of list) {
+            try { OTPAuth.Secret.fromBase32(e.secret); } catch (err) { failed++; continue; }
+            if (syncCache.some(x => x.secret === e.secret)) { skipped++; continue; }
+            const entry = await addSecretToVault(e.secret, e.label);
+            if (!entry) { expired = true; break; }
+            imported++;
+        }
+        renderHistory(); updateTOTP();
+        if (!expired) showToast('导入完成：新增 ' + imported + ' 条，跳过 ' + skipped + ' 条重复' + (failed > 0 ? '，' + failed + ' 条无效' : ''));
+    }
+    function importFromFile(event) {
+        const file = event.target.files && event.target.files[0]; event.target.value = '';
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => { const parsed = parseExportData(String(reader.result || '')); if (parsed && parsed.error) { showToast(parsed.error === 'not-json' ? '文件不是有效的 JSON 文件，请确认选的是备份或导出文件' : '文件里没有可导入的密钥条目，可能是空备份'); return; } closeImportModal(); importEntries(parsed); };
+        reader.onerror = () => showToast('读取文件失败');
+        reader.readAsText(file);
+    }
+    function openImportScan() { scanPurpose = 'import'; openScanModal(); }
+    function handleImportScannedText(text) {
+        const parsed = parseExportData(text);
+        if (parsed && !parsed.error) { importEntries(parsed); return; }
+        const parsedOtp = parseOtpAuth(text);
+        if (parsedOtp) { importEntries([{ label: parsedOtp.label, secret: parsedOtp.secret }]); return; }
+        showToast('这个二维码不是 LG 2FA 导出数据，也不是 2FA 密钥');
+    }
+    function openAddMenu() { showV5('addMenuModal'); }
+    function closeAddMenu() { hideV5('addMenuModal'); }
+    function openPasteModal() { showV5('pasteModal'); }
+    function closePasteModal() { hideV5('pasteModal'); }
+    async function addSecretToVault(clean, remark) {
+        const label = remark && remark.trim() ? remark.trim() : '账号 ' + (syncCache.length + 1);
+        if (!syncMode()) { showToast('请先登录'); showLogin(); return null; }
+        try {
+            const created = await apiFetch('/api/vault', 'POST', { label: label, secret: clean });
+            const entry = { id: created.id, localId: newLocalId(), remark: created.label, secret: clean };
+            syncCache.push(entry); saveCache(); renderHistory(); setOffline(false); return entry;
+        } catch (e) {
+            if (isExpiredError(e)) { showToast(e.message); return null; }
+            const entry = { id: null, localId: newLocalId(), remark: label, secret: clean };
+            syncCache.push(entry); queueCreate(entry); saveCache(); renderHistory(); setOffline(true); return entry;
+        }
+    }
+    async function addSecretFromPaste() {
+        const clean = cleanSecret(document.getElementById('pasteSecret').value || '');
+        const remark = document.getElementById('pasteRemark').value || '';
+        if (!clean) { showToast('请输入密钥'); return; }
+        try { OTPAuth.Secret.fromBase32(clean); } catch (e) { showToast('非法的 Base32 密钥格式，请检查'); return; }
+        const entry = await addSecretToVault(clean, remark);
+        if (entry) { closePasteModal(); document.getElementById('pasteSecret').value = ''; document.getElementById('pasteRemark').value = ''; showToast(offlineMode ? '已保存到本机，联网后自动同步' : '已保存到云端'); }
+    }
+    let currentEntryLocalId = '';
+    function openEntryModal(localId) {
+        const item = syncCache.find(x => x.localId === localId); if (!item) return;
+        currentEntryLocalId = localId; document.getElementById('entryRemark').value = item.remark; showV5('entryModal');
+    }
+    function closeEntryModal() { hideV5('entryModal'); }
+    async function saveEntryRemark() {
+        const item = syncCache.find(x => x.localId === currentEntryLocalId); if (!item) return;
+        const label = document.getElementById('entryRemark').value.trim(); if (!label) { showToast('备注不能为空'); return; }
+        item.remark = label;
+        if (!item.id) { queueUpdate(item); saveCache(); renderHistory(); closeEntryModal(); showToast('备注已更新，联网后同步到云端'); return; }
+        saveCache(); renderHistory(); closeEntryModal(); showToast('备注已更新');
+        (async () => { try { await apiFetch('/api/vault/' + item.id, 'PATCH', { label: label }); setOffline(false); } catch (e) { queueUpdate(item); saveCache(); renderHistory(); setOffline(true); if (!isExpiredError(e)) showToast('备注已在本机更新，联网后同步到云端'); } })();
+    }
+    function copyEntrySecret() { const item = syncCache.find(x => x.localId === currentEntryLocalId); if (item) copySecret(item.secret); }
+    function deleteEntryFromModal() { const localId = currentEntryLocalId; closeEntryModal(); if (localId) deleteAccount(localId); }
+    function renderMobileList() {
+        const listEl = document.getElementById('mobileList'); if (!listEl) return;
+        listEl.innerHTML = '';
+        if (!syncMode()) return;
+        if (syncCache.length === 0) { listEl.innerHTML = "<div style='color: #999; text-align: center; padding: 20px 0;'>还没有账号，点右上角 + 添加</div>"; return; }
+        [...syncCache].reverse().forEach(item => {
+            const div = document.createElement('div'); div.className = 'mobile-item';
+            div.innerHTML = '<div class="mi-left"><div class="mi-remark"></div><div class="mi-code">------</div></div><div class="mi-ring"><div class="mi-radar"></div><svg width="64" height="64"><circle cx="32" cy="32" r="26" stroke="#f0f0f0" stroke-width="5" fill="transparent"/><circle class="mi-ring-prog" cx="32" cy="32" r="26" stroke="#ff0055" stroke-width="5" fill="transparent" stroke-linecap="round"/></svg><div class="mi-sec-wrap"><div class="mi-sec">30</div><span class="mi-sec-unit">秒</span></div></div>';
+            div.querySelector('.mi-remark').innerText = item.remark + (isPending(item.localId) ? ' · 待同步' : '');
+            const codeEl = div.querySelector('.mi-code');
+            codeEl.onclick = (ev) => { ev.stopPropagation(); copyToClipboard(totpForSecret(item.secret), '验证码已复制'); };
+            div.onclick = () => openEntryModal(item.localId);
+            div.dataset.localId = item.localId;
+            listEl.appendChild(div);
+        });
+        updateMobileCodes();
+    }
+    function totpForSecret(secret) {
+        try { const t = new OTPAuth.TOTP({ algorithm: 'SHA1', digits: 6, period: 30, secret: OTPAuth.Secret.fromBase32(secret) }); return t.generate(); } catch (e) { return '------'; }
+    }
+    function updateMobileCodes() {
+        const listEl = document.getElementById('mobileList'); if (!listEl) return;
+        const epoch = Math.floor(Date.now() / 1000); const remaining = 30 - (epoch % 30);
+        const circ = 2 * Math.PI * 26;
+        listEl.querySelectorAll('.mobile-item').forEach(div => {
+            const item = syncCache.find(x => x.localId === div.dataset.localId); if (!item) return;
+            const codeEl = div.querySelector('.mi-code'); if (codeEl) codeEl.innerText = totpForSecret(item.secret);
+            const prog = div.querySelector('.mi-ring-prog'); if (prog) { prog.style.strokeDasharray = circ; prog.style.strokeDashoffset = circ - (remaining / 30) * circ; }
+            const sec = div.querySelector('.mi-sec'); if (sec) sec.innerText = remaining;
+        });
+    }
+    function copyMobileCode(secret) { copyToClipboard(totpForSecret(secret), '验证码已复制'); }
+    let scanStream = null; let scanRunning = false; let scanMode = ''; let nativeScanCancelled = false; let scanPurpose = 'add';
+    function showScanView(native) { const v = document.getElementById('scanView'); v.classList.add('active'); if (native) v.classList.add('native'); else v.classList.remove('native'); }
+    function hideScanView() { const v = document.getElementById('scanView'); v.classList.remove('active'); v.classList.remove('native'); }
+    function cancelScan() {
+        scanPurpose = 'add';
+        if (scanMode === 'native') { nativeScanCancelled = true; stopNativeScan(); }
+        else { stopScan(); hideScanView(); }
+    }
+    function nativeBarcodeScanner() {
+        try {
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.BarcodeScanner) return window.Capacitor.Plugins.BarcodeScanner;
+        } catch (e) {}
+        return null;
+    }
+    async function nativeCall(method, opts) {
+        const bs = nativeBarcodeScanner();
+        if (bs && typeof bs[method] === 'function') return bs[method](opts || {});
+        if (window.Capacitor && typeof window.Capacitor.nativePromise === 'function') return window.Capacitor.nativePromise('BarcodeScanner', method, opts || {});
+        throw new Error('native scanner not available');
+    }
+    async function stopNativeScan() {
+        try { await nativeCall('showBackground'); } catch (e) {}
+        try { await nativeCall('stopScan'); } catch (e) {}
+        document.body.classList.remove('scanning'); hideScanView();
+    }
+    async function openScanModal() {
+        // 安卓优先走原生扫码：直接就是全屏摄像头，没有网页视频占位界面。
+        // 原生不可用时（网页/电脑）才走全屏 jsQR 摄像头，同样没有弹窗卡片。
+        const bs = nativeBarcodeScanner();
+        const hasNative = !!bs || (window.Capacitor && typeof window.Capacitor.nativePromise === 'function');
+        if (hasNative) {
+            try {
+                const perm = await nativeCall('checkPermission', { force: true });
+                if (!perm || !perm.granted) { showToast('请在系统设置里给本应用开启相机权限'); return; }
+                scanMode = 'native'; nativeScanCancelled = false;
+                document.body.classList.add('scanning'); showScanView(true);
+                await nativeCall('hideBackground');
+                const result = await nativeCall('startScan');
+                document.body.classList.remove('scanning'); hideScanView();
+                if (nativeScanCancelled) return;
+                if (result && result.hasContent && result.content) { handleScannedText(result.content); return; }
+                return;
+            } catch (e) {
+                document.body.classList.remove('scanning'); hideScanView();
+                // 原生失败时不要卡住，自动降级到全屏 jsQR 摄像头
+            }
+        }
+        if (typeof jsQR === 'undefined') { showToast('扫码组件还没加载好，请联网后再试'); return; }
+        scanMode = 'jsqr'; showScanView(false); startScan();
+    }
+    function closeScanModal() { cancelScan(); }
+    function stopScan() {
+        scanRunning = false;
+        if (scanStream) { scanStream.getTracks().forEach(tr => tr.stop()); scanStream = null; }
+        const v = document.getElementById('scanVideo'); if (v) v.srcObject = null;
+    }
+    async function startScan() {
+        const video = document.getElementById('scanVideo');
+        const loading = document.getElementById('scanLoading');
+        if (loading) loading.style.display = 'block';
+        try {
+            scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+            video.srcObject = scanStream;
+            video.onplaying = () => { if (loading) loading.style.display = 'none'; };
+            try { await video.play(); } catch (e) {}
+            scanRunning = true;
+            const canvas = document.getElementById('scanCanvas'); const ctx = canvas.getContext('2d');
+            const tick = () => {
+                if (!scanRunning) return;
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    if (loading) loading.style.display = 'none';
+                    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(img.data, img.width, img.height);
+                    if (code && code.data) { stopScan(); hideScanView(); handleScannedText(code.data); return; }
+                }
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        } catch (e) { stopScan(); hideScanView(); showToast('打不开摄像头，请先给本应用开启相机权限'); }
+    }
+    async function handleScannedText(text) {
+        stopScan(); hideScanView();
+        if (scanPurpose === 'import') { scanPurpose = 'add'; handleImportScannedText(text); return; }
+        const parsed = parseOtpAuth(text);
+        if (!parsed) { showToast('这个二维码不是 2FA 密钥'); return; }
+        try { OTPAuth.Secret.fromBase32(parsed.secret); } catch (e) { showToast('二维码里的密钥格式不对'); return; }
+        const entry = await addSecretToVault(parsed.secret, parsed.label);
+        if (entry) showToast(offlineMode ? '已保存到本机，联网后自动同步' : '已保存到云端');
+    }
+    function parseOtpAuth(text) {
+        try {
+            const u = new URL(text.trim());
+            if (u.protocol !== 'otpauth:' || u.hostname !== 'totp') return null;
+            const secret = (u.searchParams.get('secret') || '').replace(/\s+/g, '').toUpperCase();
+            if (!secret) return null;
+            const issuer = u.searchParams.get('issuer') || '';
+            const account = decodeURIComponent(u.pathname.replace(/^\//, ''));
+            const label = issuer && account ? issuer + ' ' + account : (account || issuer || '');
+            return { secret: secret, label: label };
+        } catch (e) { return null; }
+    }
+    // 桌面历史列表渲染完后，同步渲染手机竖排列表；每秒刷新手机列表的口令和圆环。
+    const prevRenderHistoryForMobile = renderHistory;
+    renderHistory = function() { prevRenderHistoryForMobile(); renderMobileList(); };
+    setInterval(updateMobileCodes, 1000);
+
+    (function() {
+        const prevOnload = window.onload;
+        window.onload = () => {
+            if (typeof prevOnload === 'function') prevOnload();
+            loadCache(); loadQueue();
+            if (syncMode()) { showMain(); renderHistory(); startAutoSync(); syncFromServer(); } else { showMain(); renderHistory(); updateTOTP(); }
+            updatePendingNote();
+        };
+        window.addEventListener('online', () => autoSyncSilent());
+    })();
+    </script>
+
+
+    <div class="v5-modal" id="accountMenuModal"><div class="modal-box"><div class="modal-title">账号</div><div class="menu-email" id="accountEmailText"></div><div id="accountList"></div><button class="menu-btn secondary" onclick="closeAccountMenu(); openAddAccount();">添加账号</button><button class="menu-btn" id="accountSyncBtn" onclick="closeAccountMenu(); syncFromServer();">立即同步</button><button class="menu-btn secondary" onclick="closeAccountMenu(); openChangePwModal();">修改密码</button><button class="menu-btn secondary" onclick="closeAccountMenu(); kickOthers();">剔除其他设备</button><button class="menu-btn secondary" onclick="closeAccountMenu(); openExportModal();">导出</button><button class="menu-btn secondary" onclick="closeAccountMenu(); openImportModal();">导入</button><button class="menu-btn danger" onclick="closeAccountMenu(); syncLogout();">退出当前账号</button><button class="menu-btn secondary" onclick="closeAccountMenu();">取消</button></div></div>
+    <div class="v5-modal" id="changePwModal"><div class="modal-box"><div class="modal-title">修改密码</div><input type="password" id="oldPw" placeholder="原密码" autocomplete="current-password"><input type="password" id="newPw" placeholder="新密码（至少 8 位）" autocomplete="new-password"><input type="password" id="newPw2" placeholder="确认新密码" autocomplete="new-password"><button class="menu-btn" onclick="changePassword()">确认修改</button><div style="color:#666;font-size:0.85rem;line-height:1.6;text-align:center;">改密码后，其他设备会退出登录，本机保持登录。</div><button class="menu-btn secondary" onclick="closeChangePwModal();">取消</button></div></div>
+    <div class="v5-modal" id="exportModal"><div class="modal-box"><div class="modal-title">导出</div><div style="color:#ff3333;font-size:0.9rem;line-height:1.6;margin-bottom:12px;text-align:center;">导出内容包含密钥原文，请妥善保管，不要发给任何人。</div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><span id="exportSelectCount" style="color:#666;font-size:0.9rem;"></span><button class="menu-btn secondary" id="exportToggleAll" style="width:auto;padding:6px 14px;margin:0;" onclick="toggleExportAll()">取消全选</button></div><div id="exportList" style="max-height:220px;overflow:auto;text-align:left;border:1px solid #f0d0dc;border-radius:10px;padding:4px 10px;margin-bottom:12px;"></div><textarea id="exportText" readonly></textarea><button class="menu-btn" onclick="copyExport()">复制导出内容</button><button class="menu-btn secondary" onclick="downloadExport()">下载导出文件</button><button class="menu-btn secondary" onclick="showExportQR()">生成二维码</button><div id="exportQRWrap" style="display:none;text-align:center;margin-top:12px;"><img id="exportQRImg" style="width:240px;height:240px;border:8px solid #fff;box-shadow:0 4px 16px rgba(0,0,0,0.15);border-radius:8px;"><div id="exportQRNote" style="color:#ff3333;font-size:0.85rem;line-height:1.6;margin-top:8px;">二维码包含所选条目的密钥原文，不要截图外发。用另一台设备 / 另一个账号的“导入 - 扫码导入”扫描。</div></div><button class="menu-btn secondary" onclick="closeExportModal();">取消</button></div></div>
+    <div class="v5-modal" id="importModal"><div class="modal-box"><div class="modal-title">导入账号</div><div style="color:#666;font-size:0.9rem;line-height:1.6;margin-bottom:12px;text-align:center;">导入到当前账号，已存在的相同密钥会自动跳过，导入后会同步到云端。</div><button class="menu-btn" onclick="document.getElementById('importFile').click();">选择文件导入</button><input type="file" id="importFile" accept=".json,application/json" style="display:none;" onchange="importFromFile(event)"><button class="menu-btn secondary" onclick="closeImportModal(); openImportScan();">扫码导入</button><button class="menu-btn secondary" onclick="closeImportModal();">取消</button></div></div>
+    <div class="v5-modal" id="addMenuModal"><div class="modal-box"><div class="modal-title">添加账号</div><button class="menu-btn" onclick="closeAddMenu(); openPasteModal();">粘贴密钥添加</button><button class="menu-btn" onclick="closeAddMenu(); openScanModal();">扫码添加</button><button class="menu-btn secondary" onclick="closeAddMenu();">取消</button></div></div>
+    <div class="v5-modal" id="pasteModal"><div class="modal-box"><div class="modal-title">粘贴密钥添加</div><input type="text" id="pasteSecret" placeholder="2FA 密钥 (Base32)" autocomplete="off"><input type="text" id="pasteRemark" placeholder="备注（可不填，默认按顺序编号）"><button class="menu-btn" onclick="addSecretFromPaste()">添加</button><button class="menu-btn secondary" onclick="closePasteModal();">取消</button></div></div>
+    <div class="v5-modal" id="entryModal"><div class="modal-box"><div class="modal-title">编辑账号</div><input type="text" id="entryRemark" placeholder="备注"><button class="menu-btn" onclick="saveEntryRemark()">保存备注</button><button class="menu-btn secondary" onclick="copyEntrySecret()">复制密钥</button><button class="menu-btn danger" onclick="deleteEntryFromModal()">删除</button><button class="menu-btn secondary" onclick="closeEntryModal();">取消</button></div></div>
+    <div id="client-download-modal" onclick="if(event.target===this) hideClientDownload()" style="display: none; position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; background: rgba(0,0,0,0.6); z-index: 100000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; overflow-y: auto;">
     <div style="background: #ffffff; border: 2px solid rgba(255,0,85,0.2); border-radius: 20px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; margin: auto; padding: 24px; box-sizing: border-box; color: #1a1a1a;">
         <h3 style="margin: 0 0 16px; text-align: center;">⬇️ 下载客户端</h3>
         <div style="background: rgba(255,0,85,0.05); border: 1px solid rgba(255,0,85,0.15); border-radius: 14px; padding: 16px; margin-bottom: 12px;">
-            <div style="font-weight: bold; font-size: 16px;">💻 Windows 桌面版 v1.0.5 · 106 MB</div>
-            <p style="color: #666; font-size: 13px; line-height: 1.6; margin: 8px 0 12px;">zip 压缩包，解压后运行。首次使用请先完全退出旧版（托盘右键退出），解压到新文件夹再运行。</p>
-            <a href="https://guo.roselg.xyz/downloads/LG-2FA-win-v105.zip" style="display: block; text-align: center; background: linear-gradient(135deg,#ff0055,#e6004c); color: #fff; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: bold;">⬇️ 下载 Windows 版</a>
+            <div style="font-weight: bold; font-size: 16px;">💻 Windows 桌面版 v1.0.10 · 106 MB</div>
+            <p style="color: #666; font-size: 13px; line-height: 1.6; margin: 8px 0 12px;">zip 压缩包，解压后运行。首次使用请先完全退出旧版（托盘右键退出），解压到新文件夹再运行，首次打开会自动在桌面生成图标。</p>
+            <a href="https://guo.roselg.xyz/downloads/LG-2FA-win-v110.zip" style="display: block; text-align: center; background: linear-gradient(135deg,#ff0055,#e6004c); color: #fff; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: bold;">⬇️ 下载 Windows 版</a>
         </div>
         <div style="background: rgba(255,0,85,0.05); border: 1px solid rgba(255,0,85,0.15); border-radius: 14px; padding: 16px; margin-bottom: 12px;">
-            <div style="font-weight: bold; font-size: 16px;">📱 安卓手机版 v1.0.5 · 4.2 MB</div>
+            <div style="font-weight: bold; font-size: 16px;">📱 安卓手机版 v1.0.7 · 4.2 MB</div>
             <p style="color: #666; font-size: 13px; line-height: 1.6; margin: 8px 0 12px;">APK 安装包，安装时请允许“安装未知应用”。</p>
-            <a href="https://guo.roselg.xyz/downloads/LG-2FA-android-v105.apk" style="display: block; text-align: center; background: linear-gradient(135deg,#e6004c,#b3003b); color: #fff; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: bold; box-shadow: 0 4px 12px rgba(255,0,85,0.35);">⬇️ 下载安卓版</a>
+            <a href="https://guo.roselg.xyz/downloads/LG-2FA-android-v107.apk" style="display: block; text-align: center; background: linear-gradient(135deg,#e6004c,#b3003b); color: #fff; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: bold; box-shadow: 0 4px 12px rgba(255,0,85,0.35);">⬇️ 下载安卓版</a>
         </div>
         <button onclick="hideClientDownload()" style="width: 100%; margin-top: 4px; padding: 10px; border-radius: 10px; border: 1px solid #ddd; background: #f0f0f0; color: #666; cursor: pointer; font-weight: bold;">关闭</button>
     </div>
 </div>
-<script>
-function showClientDownload(){var m=document.getElementById('client-download-modal'); if(m){m.style.display='flex'; document.body.style.overflow='hidden';}}
-function hideClientDownload(){var m=document.getElementById('client-download-modal'); if(m){m.style.display='none'; document.body.style.overflow='';}}
-function backupLocalHistory(){
-  try {
-    var raw = localStorage.getItem('lg_2fa_history');
-    var list = raw ? JSON.parse(raw) : [];
-    if (!list || list.length === 0) { showToast('当前没有本地记录可备份'); return; }
-    var entries = list.filter(function(h){ return h && typeof h.secret === 'string' && h.secret; }).map(function(h){ return { label: h.remark || '', secret: h.secret }; });
-    if (entries.length === 0) { showToast('本地记录里没有可备份的密钥条目'); return; }
-    var data = { app: 'LG筑梦电子2FA', exportedAt: new Date().toISOString(), entries: entries };
-    var blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-    var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    var d = new Date(); var pad = function(n){ return String(n).padStart(2, '0'); };
-    a.download = 'lg-2fa-backup-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '.json';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
-    showToast('备份文件已开始下载，共 ' + list.length + ' 条，请妥善保管');
-  } catch(e) { showToast('备份失败，请稍后再试'); }
-}
-</script>
+    <div class="v5-modal" id="localSyncModal"><div class="modal-box"><div class="modal-title">同步本地记录到云端</div><div style="color:#666;font-size:0.9rem;line-height:1.6;margin-bottom:12px;text-align:center;">检测到本浏览器有本地记录未在云端，勾选后同步到当前账号，已在云端的相同密钥会自动跳过。</div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><span id="localSyncCount" style="color:#666;font-size:0.9rem;"></span><button class="menu-btn secondary" id="localSyncToggleAll" style="width:auto;padding:6px 14px;margin:0;" onclick="toggleLocalSyncAll()">取消全选</button></div><div id="localSyncList" style="max-height:220px;overflow:auto;text-align:left;border:1px solid #f0d0dc;border-radius:10px;padding:4px 10px;margin-bottom:12px;"></div><button class="menu-btn" onclick="confirmLocalSync()">同步选中</button><button class="menu-btn secondary" onclick="closeLocalSyncPopup();">暂不</button></div></div>
+    <div id="scanView"><video id="scanVideo" autoplay muted playsinline></video><canvas id="scanCanvas" style="display:none;"></canvas><div id="scanLoading">正在打开摄像头…</div><div id="scanFrame"></div><div id="scanHint">把二维码对准摄像头，识别到会自动添加</div><button id="scanCancel" onclick="cancelScan();">取消</button></div>
+
+
+    <script>
+    // 网页版专属（客户端没有这段）：打开即本地使用，不弹登录；登录后才弹本地同步。
+    function showClientDownload(){var m=document.getElementById('client-download-modal'); if(m){m.style.display='flex'; document.body.style.overflow='hidden';}}
+    function hideClientDownload(){var m=document.getElementById('client-download-modal'); if(m){m.style.display='none'; document.body.style.overflow='';}}
+    function backupLocalHistory(){
+      try {
+        var raw = localStorage.getItem('lg_2fa_history');
+        var list = raw ? JSON.parse(raw) : [];
+        if (!list || list.length === 0) { showToast('当前没有本地记录可备份'); return; }
+        var entries = list.filter(function(h){ return h && typeof h.secret === 'string' && h.secret; }).map(function(h){ return { label: h.remark || '', secret: h.secret }; });
+        if (entries.length === 0) { showToast('本地记录里没有可备份的密钥条目'); return; }
+        var data = { app: 'LG筑梦电子2FA', exportedAt: new Date().toISOString(), entries: entries };
+        var blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        var d = new Date(); var pad = function(n){ return String(n).padStart(2, '0'); };
+        a.download = 'lg-2fa-backup-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '.json';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+        showToast('备份文件已开始下载，共 ' + entries.length + ' 条，请妥善保管');
+      } catch(e) { showToast('备份失败，请稍后再试'); }
+    }
+    function backToLocal() { showMain(); renderHistory(); updateTOTP(); }
+    function webAvatarClick() { if (syncMode()) { openAccountMenu(); } else { showLogin(); } }
+    function updateWebLocalUI() {
+        const notice = document.getElementById('webLocalNotice'); if (notice) notice.style.display = syncMode() ? 'none' : 'block';
+    }
+    const _webShowMain = showMain;
+    showMain = function() { _webShowMain(); updateWebLocalUI(); };
+    let localSyncList = []; let localSyncSelected = new Set();
+    function unsyncedLocalEntries() {
+        const cloud = syncCache.map(x => { try { return cleanSecret(x.secret); } catch (e) { return ''; } });
+        return getHistory().filter(h => h && typeof h.secret === 'string' && h.secret && !cloud.includes(cleanSecret(h.secret)));
+    }
+    function maybeShowLocalSyncPopup() {
+        if (!syncMode()) return;
+        const list = unsyncedLocalEntries();
+        if (list.length === 0) return;
+        localSyncList = list; localSyncSelected = new Set(list.map((h, i) => 'local' + i));
+        renderLocalSyncList(); updateLocalSyncCount(); showV5('localSyncModal');
+    }
+    function updateLocalSyncCount() {
+        const c = document.getElementById('localSyncCount'); if (c) c.innerText = '已选 ' + localSyncSelected.size + ' / ' + localSyncList.length + ' 条';
+        const tog = document.getElementById('localSyncToggleAll'); if (tog) tog.innerText = (localSyncSelected.size > 0 && localSyncSelected.size === localSyncList.length) ? '取消全选' : '全选';
+    }
+    function renderLocalSyncList() {
+        const listEl = document.getElementById('localSyncList'); if (!listEl) return;
+        listEl.innerHTML = '';
+        localSyncList.forEach((h, i) => {
+            const key = 'local' + i;
+            const label = document.createElement('label');
+            label.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid #f7e6ec;cursor:pointer;';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox'; cb.checked = localSyncSelected.has(key); cb.style.cssText = 'width:18px;height:18px;accent-color:#ff0055;flex-shrink:0;';
+            cb.onchange = () => { if (cb.checked) localSyncSelected.add(key); else localSyncSelected.delete(key); updateLocalSyncCount(); };
+            const sp = document.createElement('span');
+            sp.innerText = h.remark || '未命名';
+            sp.style.cssText = 'font-size:0.95rem;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+            label.appendChild(cb); label.appendChild(sp); listEl.appendChild(label);
+        });
+    }
+    function toggleLocalSyncAll() {
+        if (localSyncSelected.size === localSyncList.length && localSyncList.length > 0) localSyncSelected.clear();
+        else localSyncList.forEach((h, i) => localSyncSelected.add('local' + i));
+        renderLocalSyncList(); updateLocalSyncCount();
+    }
+    function closeLocalSyncPopup() { hideV5('localSyncModal'); }
+    async function confirmLocalSync() {
+        if (localSyncSelected.size === 0) { showToast('请先勾选至少一条要同步的记录'); return; }
+        let imported = 0, skipped = 0, failed = 0, expired = false;
+        for (let i = 0; i < localSyncList.length; i++) {
+            if (!localSyncSelected.has('local' + i)) continue;
+            const h = localSyncList[i];
+            try { OTPAuth.Secret.fromBase32(cleanSecret(h.secret)); } catch (err) { failed++; continue; }
+            if (syncCache.some(x => x.secret === cleanSecret(h.secret))) { skipped++; continue; }
+            const entry = await addSecretToVault(cleanSecret(h.secret), h.remark || '');
+            if (!entry) { expired = true; break; }
+            imported++;
+        }
+        renderHistory(); updateTOTP(); closeLocalSyncPopup();
+        if (!expired) showToast('同步完成：新增 ' + imported + ' 条，跳过 ' + skipped + ' 条重复' + (failed > 0 ? '，' + failed + ' 条无效' : ''));
+    }
+    </script>
+
 </body>
 </html>
